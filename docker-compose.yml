@@ -45,7 +45,9 @@ services:
       - app-network
 
   spark-master:
-    image: bitnami/spark:3.5.5
+    build:
+      context: .
+      dockerfile: Dockerfile
     container_name: spark-master
     environment:
       - SPARK_MODE=master
@@ -64,7 +66,9 @@ services:
       - app-network
 
   spark-worker:
-    image: bitnami/spark:3.5.5
+    build:
+      context: .
+      dockerfile: Dockerfile
     container_name: spark-worker
     depends_on:
       - spark-master
