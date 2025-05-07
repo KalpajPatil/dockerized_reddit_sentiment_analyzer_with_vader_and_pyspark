@@ -4,4 +4,4 @@
 
 3. A PySpark application uses this Kafka topic as a source to perform data processing and sentiment analysis.
 
-4. Resulting dataframe is written to csv files under /spark_output
+4. Resulting dataframe is written to excel file under /excel_data and in CSV format under /final_csv
