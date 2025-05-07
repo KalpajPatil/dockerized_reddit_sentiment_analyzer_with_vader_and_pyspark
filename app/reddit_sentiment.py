@@ -1,11 +1,11 @@
 import traceback
 from pyspark.sql import SparkSession
 from pyspark.sql.functions import from_json, col, explode, udf, lit
-from pyspark.sql.types import StructType, StringType, ArrayType, DoubleType
+from pyspark.sql.types import StructType, StringType, ArrayType, DoubleType, IntegerType, StructField
 from vaderSentiment.vaderSentiment import SentimentIntensityAnalyzer
-import random
+
 OUTPUT_PATH = "/spark_output"
-CHECKPOINT_LOCATION = "/checkpoint_8"
+CHECKPOINT_LOCATION = "/checkpoint"
 
 def setup_spark_context():
     global spark
@@ -17,28 +17,39 @@ def setup_spark_context():
     spark.sparkContext.setLogLevel("WARN")
 
 def process_data():
+    comment_schema = StructType([StructField("comment", StringType(), True), StructField("score", IntegerType(), True)])
+
     schema = StructType() \
         .add("title", StringType()) \
         .add("link", StringType()) \
-        .add("comments", ArrayType(StringType()))
-
+        .add("comments", ArrayType(comment_schema)) \
 
     raw_df = spark.readStream \
         .format("kafka") \
         .option("kafka.bootstrap.servers", "kafka:9092") \
-        .option("subscribe", "reddit_posts_from_r_adidas_90") \
+        .option("subscribe", "reddit_posts_from_r_adidas") \
         .option("startingOffsets", "latest") \
         .load()
 
     parsed_df = raw_df.selectExpr("CAST(value AS STRING) as json_str") \
         .select(from_json(col("json_str"), schema).alias("data")) \
         .select("data.*")
+    
+    comments_df = parsed_df.select(
+        "title",
+        "link",
+        explode("comments").alias("comment_struct")
+    ).select(
+        "title",
+        "link",
+        col("comment_struct.comment").alias("comment"),
+        col("comment_struct.score").alias("score")
+    )
 
     #explode the comments array into seperate rows
-    comments_df = parsed_df.withColumn("comment", explode(col("comments"))) \
-                        .select("title", "link", "comment")
+    # comments_df = parsed_df.withColumn("comment", explode(col("comments"))) \
+    #                     .select("title", "link", "comment")
 
-    # Define a UDF for sentiment score using VADER
     analyzer = SentimentIntensityAnalyzer()
 
     #user-defined function which will apply to every row of our df on "comment" column
@@ -48,15 +59,8 @@ def process_data():
             return float(analyzer.polarity_scores(text)["compound"])
         return 0.0
 
-    # @udf(returnType= DoubleType())
-    # def get_random_sentiment(dummy):
-    #     return random.uniform(-1.0,1.0)
-
+    #df with sentiment scores column
     scored_df = comments_df.withColumn("sentiment", get_sentiment_score(col("comment")))
-
-    #get average sentiment on each post
-    agg_df = scored_df.groupBy("title", "link").avg("sentiment") \
-                    .withColumnRenamed("avg(sentiment)", "avg_sentiment")
 
     try:
        scored_df.writeStream \
@@ -64,6 +68,8 @@ def process_data():
             .option("path", OUTPUT_PATH + "/output_data") \
             .option("checkpointLocation", CHECKPOINT_LOCATION) \
             .option("header", "true") \
+            .option("escape", '"') \
+            .option("multiLine", True) \
             .trigger(processingTime='3 seconds') \
             .start() \
             .awaitTermination()

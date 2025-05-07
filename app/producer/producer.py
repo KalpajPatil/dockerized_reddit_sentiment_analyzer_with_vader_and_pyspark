@@ -4,7 +4,7 @@ import traceback
 import json
 import confluent_kafka
 
-KAFKA_TOPIC = "reddit_posts_from_r_adidas_90"
+KAFKA_TOPIC = "reddit_posts_from_r_adidas"
 
 reddit = praw.Reddit(
     client_id="KmHb_sStduvNxMCeJmPX_w", #enter your own reddit client id
@@ -21,19 +21,24 @@ try:
     global posts_dict
     posts = []
     posts_dict = {}
-    for post in subreddit.hot(limit=11):
+    for post in subreddit.hot(limit=200):
         data_dict = {}
         comment_list = []
         post.comments.replace_more(limit=0)
-        if post.title.startswith("For all the"):
+        if post.stickied:
             continue
         data_dict["title"] = post.title
         data_dict["link"] = f"https://reddit.com{post.permalink}"
         for comment in post.comments.list():
+            comment_item = {}
             if comment.body and comment.body != "[deleted]":
                 author = comment.author.name if comment.author else "Anonymous"
                 body_snippet = comment.body[:].replace('\n', ' ')
-                comment_list.append(body_snippet)
+                #comment.score = total upvotes - total downvotes on a comment
+                comment_score = comment.score
+                comment_item["comment"] = body_snippet
+                comment_item["score"] = comment_score
+                comment_list.append(comment_item)
         data_dict["comments"] = comment_list
         posts.append(data_dict)
     posts_dict["posts"] = posts

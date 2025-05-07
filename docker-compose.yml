@@ -40,7 +40,7 @@ services:
       - "7077:7077"
     volumes:
       - ./spark_output:/spark_output
-      - ./checkpoint_8:/checkpoint_8
+      - ./checkpoint:/checkpoint
     networks:
       - app-network
 
@@ -62,7 +62,7 @@ services:
       - SPARK_SSL_ENABLED=no
     volumes:
       - shared_data:/spark_output
-      - ./checkpoint_8:/checkpoint_8
+      - ./checkpoint:/checkpoint
     networks:
       - app-network
 
@@ -76,7 +76,7 @@ services:
       - spark-worker
       - kafka
     volumes:
-      - ./checkpoint_8:/checkpoint_8
+      - ./checkpoint:/checkpoint
       - shared_data:/spark_output
     command: |
       bash -c "

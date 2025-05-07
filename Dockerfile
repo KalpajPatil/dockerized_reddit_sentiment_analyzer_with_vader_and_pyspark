@@ -9,13 +9,13 @@ RUN apt-get update && apt-get install -y python3-pip && \
 RUN pip3 install vaderSentiment
 
 # Create required directories
-RUN mkdir -p /app /spark_output /checkpoint_8
+RUN mkdir -p /app /spark_output /checkpoint
 
 # Copy the application files
 COPY app/reddit_sentiment.py /app/
 
 # Ensure proper permissions
-RUN chmod -R 777 /app /spark_output /checkpoint_8
+RUN chmod -R 777 /app /spark_output /checkpoint
 RUN chmod +x /app/reddit_sentiment.py 
 
 # Set working directory
