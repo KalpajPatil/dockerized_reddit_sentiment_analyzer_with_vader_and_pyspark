@@ -7,8 +7,8 @@ import confluent_kafka
 KAFKA_TOPIC = "reddit_posts_from_r_adidas"
 
 reddit = praw.Reddit(
-    client_id="KmHb_sStduvNxMCeJmPX_w", #enter your own reddit client id
-    client_secret="Ns3JCr238oVfaYquTLpLsJyPjUAd3Q", #enter your own reddit client secret key
+    client_id="your_client_id", #enter your own reddit client id
+    client_secret="your_client_secret", #enter your own reddit client secret key
     user_agent="adidas_subreddit_data/1.0"
 )
 
