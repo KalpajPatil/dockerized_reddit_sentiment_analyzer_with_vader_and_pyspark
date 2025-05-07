@@ -1,48 +1,28 @@
-version: '3'
-
 services:
-  zookeeper:
-    image: confluentinc/cp-zookeeper:7.3.2
-    container_name: zookeeper
-    environment:
-      ZOOKEEPER_CLIENT_PORT: 2181
-      ZOOKEEPER_TICK_TIME: 2000
-    ports:
-      - "2181:2181"
-    networks:
-      - app-network
-
   kafka:
-    image: confluentinc/cp-kafka:7.3.2
+    image: apache/kafka:latest
+    hostname: broker
     container_name: kafka
-    depends_on:
-      - zookeeper
     ports:
-      - "9092:9092"
+      - 9092:9092
     environment:
       KAFKA_BROKER_ID: 1
-      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
-      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT,CONTROLLER:PLAINTEXT
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092,PLAINTEXT_HOST://localhost:9092
       KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
-      KAFKA_AUTO_CREATE_TOPICS_ENABLE: "true"
+      KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+      KAFKA_PROCESS_ROLES: broker,controller
+      KAFKA_NODE_ID: 1
+      KAFKA_CONTROLLER_QUORUM_VOTERS: 1@broker:9093
+      KAFKA_LISTENERS: PLAINTEXT://kafka:9092,CONTROLLER://broker:9093,PLAINTEXT_HOST://0.0.0.0:29092
+      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
+      KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
+      KAFKA_LOG_DIRS: /tmp/kraft-combined-logs
+      CLUSTER_ID: MkU3OEVBNTcwNTJENDM2Qk
     networks:
-      - app-network
-
-  kafka-setup:
-    image: confluentinc/cp-kafka:7.3.2
-    container_name: kafka-setup
-    depends_on:
-      - kafka
-    command: >
-      bash -c "
-        echo 'Waiting for Kafka to be available...'
-        cub kafka-ready -b kafka:9092 1 30
-        echo 'Creating topic: reddit_posts_from_r_adidas_may1_6'
-        kafka-topics --create --topic reddit_posts_from_r_adidas_may1_6 --bootstrap-server kafka:9092
-        echo 'Topic creation completed'
-      "
-    networks:
-      - app-network
+        - app-network
 
   spark-master:
     build:
@@ -59,9 +39,8 @@ services:
       - "8080:8080"
       - "7077:7077"
     volumes:
-      - ./app:/app
       - ./spark_output:/spark_output
-      - ./newcheckpoints:/newcheckpoints
+      - ./checkpoint_8:/checkpoint_8
     networks:
       - app-network
 
@@ -82,9 +61,8 @@ services:
       - SPARK_LOCAL_STORAGE_ENCRYPTION_ENABLED=no
       - SPARK_SSL_ENABLED=no
     volumes:
-      - ./app:/app
-      - ./spark_output:/spark_output
-      - ./newcheckpoints:/newcheckpoints
+      - shared_data:/spark_output
+      - ./checkpoint_8:/checkpoint_8
     networks:
       - app-network
 
@@ -92,16 +70,14 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
-    container_name: spark-app
+    container_name: spark-app-reddit
     depends_on:
       - spark-master
       - spark-worker
       - kafka
-      - kafka-setup
     volumes:
-      - ./app:/app
-      - ./spark_output:/spark_output
-      - ./newcheckpoints:/newcheckpoints
+      - ./checkpoint_8:/checkpoint_8
+      - shared_data:/spark_output
     command: |
       bash -c "
         echo 'Waiting for Kafka to be ready...'
@@ -119,10 +95,27 @@ services:
       dockerfile: /app/producer/Dockerfile
     container_name: kafka-topic-producer
     depends_on:
-      - kafka-setup
+      - kafka
+    networks:
+      - app-network
+
+  excel-generator:
+    build:
+      context: .
+      dockerfile: /app/data_aggregator/Dockerfile
+    container_name: excel-generator
+    volumes:
+      - shared_data:/spark_output
+      - ./excel_data:/excel_output
+      - ./final_csv:/final_csv
+    depends_on:
+      - spark-app
     networks:
       - app-network
 
 networks:
   app-network:
     driver: bridge
+
+volumes:
+  shared_data:

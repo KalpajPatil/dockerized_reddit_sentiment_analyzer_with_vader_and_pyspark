@@ -2,16 +2,19 @@ import time
 import praw
 import traceback
 import json
-from kafka import KafkaProducer
+import confluent_kafka
+
+KAFKA_TOPIC = "reddit_posts_from_r_adidas_90"
 
 reddit = praw.Reddit(
-    client_id="your_client_id", #enter your own reddit client id
-    client_secret="your_client_secret", #enter your own reddit client secret key
+    client_id="KmHb_sStduvNxMCeJmPX_w", #enter your own reddit client id
+    client_secret="Ns3JCr238oVfaYquTLpLsJyPjUAd3Q", #enter your own reddit client secret key
     user_agent="adidas_subreddit_data/1.0"
 )
 
 subreddit = reddit.subreddit("adidas")
-# Sample data to produce to Kafka topic
+
+#data to write to Kafka topic
 sample_posts = []
 
 try:
@@ -29,7 +32,7 @@ try:
         for comment in post.comments.list():
             if comment.body and comment.body != "[deleted]":
                 author = comment.author.name if comment.author else "Anonymous"
-                body_snippet = comment.body[:150].replace('\n', ' ')
+                body_snippet = comment.body[:].replace('\n', ' ')
                 comment_list.append(body_snippet)
         data_dict["comments"] = comment_list
         posts.append(data_dict)
@@ -42,22 +45,26 @@ sample_posts = posts_dict["posts"]
 
 def deliver_sample_data():
     # Create producer
-    producer = KafkaProducer(
-        bootstrap_servers=['kafka:9092'],
-        value_serializer=lambda v: json.dumps(v).encode('utf-8')
+    producer = confluent_kafka.Producer(
+        {
+            "bootstrap.servers" : "kafka:9092"
+        }
     )
     
     print("Connected to Kafka broker, sending sample data...")
-    
-    # Produce each post with delay
+
     for post in sample_posts:
         print(f"Sending post: {post['title']}")
-        producer.send('reddit_posts_from_r_adidas_may1_6', post)
-        producer.flush()
-    
+        producer.poll(1.0)
+        producer.produce(
+            topic = KAFKA_TOPIC,
+            value = json.dumps(post).encode('utf-8'),
+        )
     print("Sample data sent successfully!")
+    producer.flush()
+
 
 if __name__ == "__main__":
     # Wait for Kafka to be ready
-    time.sleep(10)
+    time.sleep(15)
     deliver_sample_data()

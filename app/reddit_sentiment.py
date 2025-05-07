@@ -5,7 +5,7 @@ from pyspark.sql.types import StructType, StringType, ArrayType, DoubleType
 from vaderSentiment.vaderSentiment import SentimentIntensityAnalyzer
 import random
 OUTPUT_PATH = "/spark_output"
-CHECKPOINT_LOCATION = "/newcheckpoints"
+CHECKPOINT_LOCATION = "/checkpoint_8"
 
 def setup_spark_context():
     global spark
@@ -26,7 +26,7 @@ def process_data():
     raw_df = spark.readStream \
         .format("kafka") \
         .option("kafka.bootstrap.servers", "kafka:9092") \
-        .option("subscribe", "reddit_posts_from_r_adidas_may1_6") \
+        .option("subscribe", "reddit_posts_from_r_adidas_90") \
         .option("startingOffsets", "latest") \
         .load()
 
@@ -61,10 +61,10 @@ def process_data():
     try:
        scored_df.writeStream \
             .format("csv") \
-            .option("path", OUTPUT_PATH) \
+            .option("path", OUTPUT_PATH + "/output_data") \
             .option("checkpointLocation", CHECKPOINT_LOCATION) \
             .option("header", "true") \
-            .trigger(processingTime='5 seconds') \
+            .trigger(processingTime='3 seconds') \
             .start() \
             .awaitTermination()
     except Exception as e:
