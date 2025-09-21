@@ -6,7 +6,7 @@
   <img src="https://img.shields.io/badge/python-3.8-yellow?logo=python" alt="Python 3.8" />
 </p>
 
-# 🧠 Reddit Sentiment Analyzer (Dockerized)  
+# 🧠 Reddit Sentiment Analyzer
 *Using VADER & PySpark*
 
 A project that fetches hot posts from the **r/adidas** subreddit, streams them via Kafka, processes and analyzes sentiment with PySpark & VADER, and exports the results in CSV / Excel. All containerized with Docker + Docker Compose for easy deployment.
