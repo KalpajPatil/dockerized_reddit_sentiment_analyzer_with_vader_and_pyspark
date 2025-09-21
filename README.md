@@ -13,19 +13,6 @@ A project that fetches hot posts from the **r/adidas** subreddit, streams them v
 
 ---
 
-## 📚 Table of Contents
-
-- [Features](#-features)  
-- [Architecture](#-architecture)  
-- [Getting Started](#-getting-started)  
-- [Usage](#-usage)  
-- [Project Structure](#-project-structure)  
-- [Requirements](#-requirements)  
-- [Contributing](#-contributing)  
-- [License](#-license)  
-
----
-
 ## ✅ Features
 
 - Pulls “hot” posts from **r/adidas** subreddit  
